@@ -1,0 +1,11 @@
+fastapi>=0.140
+uvicorn[standard]>=0.22
+httpx>=0.24
+pillow>=11.0
+python-multipart>=0.0.6
+sqlalchemy>=2.0
+aiosqlite>=0.18
+torch>=2.0
+transformers>=5.0
+geopy>=2.5
+geoclip>=1.2.0
