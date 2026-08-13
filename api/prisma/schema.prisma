@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  passwordHash String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  analyses  Analysis[]
+
+  @@map("users")
+}
+
+model Analysis {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Image storage
+  imageReference    String   // S3 path or local file reference
+  imageBase64       String?  // Optional: cached preview
+
+  // Results from V1/V2
+  geoclipPredictions Json
+  evidence          Json
+  adjustedRanking   Json?
+
+  // Status tracking
+  status            String   @default("COMPLETED")  // PENDING, PROCESSING, COMPLETED, FAILED
+  error             String?
+  jobId             String?  @unique               // Reference to Redis job
+
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([jobId])
+  @@map("analyses")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
