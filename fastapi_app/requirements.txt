@@ -9,3 +9,6 @@ torch>=2.0
 transformers>=5.0
 geopy>=2.5
 geoclip>=1.2.0
+google-cloud-vision>=3.4.0
+roboflow>=1.1.0
+python-dotenv>=1.0.0
