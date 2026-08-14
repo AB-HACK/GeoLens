@@ -46,6 +46,9 @@ export class AnalysisProcessor {
         geoclipResult.data.top_prediction,
       );
       geoclipResult.data.top_prediction = enrichedPrediction;
+      geoclipResult.data.alternatives = this.labelAlternatives(
+        geoclipResult.data.alternatives,
+      );
 
       // Stage 4: Extract evidence (Vision + Roboflow)
       job.progress(65);
@@ -137,6 +140,13 @@ export class AnalysisProcessor {
    * fails gracefully — a weather-provider outage should degrade the
    * result, not break the whole analysis.
    */
+  /**
+   * Field names here (label, temperature/feels_like/humidity/description)
+   * are dictated by the existing frontend UI (app/results — see
+   * PredictionLocation and WeatherInfo types), not chosen fresh. Keeping
+   * them aligned is what makes the results page actually render instead
+   * of silently showing "undefined" everywhere.
+   */
   private async enrichTopPrediction(topPrediction: any) {
     if (!topPrediction) return topPrediction;
     const { latitude, longitude } = topPrediction;
@@ -148,9 +158,28 @@ export class AnalysisProcessor {
 
     return {
       ...topPrediction,
-      place_name: placeName, // null if the lookup failed — treat as "unknown", not an error
-      current_weather: weather, // null if the lookup failed
+      label: placeName || this.coordinateLabel(latitude, longitude),
+      current_weather: weather, // null if the lookup failed — UI already handles this
     };
+  }
+
+  /**
+   * Alternatives don't get a full reverse-geocode call each (5 extra
+   * network round-trips per analysis against a free-tier provider isn't
+   * worth it for secondary results) — they get a readable coordinate
+   * label instead, so the UI always has a non-empty .label to render.
+   */
+  private labelAlternatives(alternatives: any[]) {
+    return (alternatives || []).map((alt) => ({
+      ...alt,
+      label: this.coordinateLabel(alt.latitude, alt.longitude),
+    }));
+  }
+
+  private coordinateLabel(lat: number, lon: number): string {
+    const latDir = lat >= 0 ? 'N' : 'S';
+    const lonDir = lon >= 0 ? 'E' : 'W';
+    return `${Math.abs(lat).toFixed(2)}°${latDir}, ${Math.abs(lon).toFixed(2)}°${lonDir}`;
   }
 
   private async reverseGeocode(lat: number, lon: number): Promise<string | null> {
@@ -182,10 +211,13 @@ export class AnalysisProcessor {
         params: { lat, lon, appid: apiKey, units: 'metric' },
         timeout: 5000,
       });
+      // Field names match WeatherInfo in app/results — not OpenWeatherMap's
+      // own naming — so the existing UI can consume this directly.
       return {
-        temperature_c: response.data.main?.temp,
-        condition: response.data.weather?.[0]?.description,
-        humidity_pct: response.data.main?.humidity,
+        description: response.data.weather?.[0]?.description ?? 'Unknown',
+        temperature: response.data.main?.temp,
+        feels_like: response.data.main?.feels_like,
+        humidity: response.data.main?.humidity,
       };
     } catch (error) {
       console.error('Weather lookup failed:', error.message);

@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '../auth/auth-context';
+import { useAuth } from '../auth-context';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
