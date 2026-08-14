@@ -1,8 +1,15 @@
 diff --git a/api/package.json b/api/package.json
-index 9bcaac3..d14688e 100644
+index 9bcaac3..1902646 100644
 --- a/api/package.json
 +++ b/api/package.json
-@@ -32,6 +32,7 @@
+@@ -26,12 +26,13 @@
+   "dependencies": {
+     "@nestjs/common": "^10.3.0",
+     "@nestjs/core": "^10.3.0",
+-    "@nestjs/jwt": "^12.1.0",
++    "@nestjs/jwt": "^10.2.0",
+     "@nestjs/passport": "^10.0.3",
+     "@nestjs/platform-express": "^10.3.0",
      "@nestjs/bull": "^10.0.1",
      "@prisma/client": "^5.8.0",
      "bull": "^4.11.5",

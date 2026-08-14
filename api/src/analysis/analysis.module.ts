@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { AnalysisService } from './analysis.service';
 import { AnalysisController } from './analysis.controller';
 import { AnalysisProcessor } from './analysis.processor';
+import { AnalysisProgressService } from './analysis-progress.service';
 import { PrismaService } from '../common/prisma.service';
 
 @Module({
@@ -11,7 +12,12 @@ import { PrismaService } from '../common/prisma.service';
       name: 'analysis',
     }),
   ],
-  providers: [AnalysisService, AnalysisProcessor, PrismaService],
+  providers: [
+    AnalysisService,
+    AnalysisProcessor,
+    AnalysisProgressService,
+    PrismaService,
+  ],
   controllers: [AnalysisController],
   exports: [AnalysisService],
 })

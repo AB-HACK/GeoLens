@@ -13,14 +13,15 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { AnalysisService } from './analysis.service';
+import { AnalysisProgressService } from './analysis-progress.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('analysis')
 export class AnalysisController {
-  // Store active SSE connections by analysisId
-  private sseConnections = new Map<string, Response>();
-
-  constructor(private analysisService: AnalysisService) {}
+  constructor(
+    private analysisService: AnalysisService,
+    private progressService: AnalysisProgressService,
+  ) {}
 
   @Post('upload')
   @UseGuards(JwtAuthGuard)
@@ -98,8 +99,9 @@ export class AnalysisController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Store connection
-    this.sseConnections.set(analysisId, res);
+    // Register connection with the shared progress service so the
+    // processor's stage updates actually reach this client
+    this.progressService.subscribe(analysisId, res);
 
     // Send initial status
     res.write(`data: ${JSON.stringify(analysis)}\n\n`);
@@ -112,17 +114,7 @@ export class AnalysisController {
     // Clean up on disconnect
     res.on('close', () => {
       clearInterval(keepAliveInterval);
-      this.sseConnections.delete(analysisId);
+      this.progressService.unsubscribe(analysisId);
     });
-  }
-
-  // Helper method for job processor to emit progress
-  emitProgress(analysisId: string, stage: string, data?: Record<string, any>) {
-    const connection = this.sseConnections.get(analysisId);
-    if (connection && !connection.closed) {
-      connection.write(
-        `data: ${JSON.stringify({ analysisId, stage, data, timestamp: new Date() })}\n\n`,
-      );
-    }
   }
 }

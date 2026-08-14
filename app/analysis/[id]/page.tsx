@@ -41,20 +41,23 @@ function ProgressPageContent() {
 
             if (data.stage) {
               setCurrentStage(data.stage);
-              const stageData = stages.find(
-                (s) => s.name.toUpperCase().replace(/ /g, '_') === data.stage
-              );
-              if (stageData) {
-                setProgress(stageData.progress);
-              }
             }
 
-            if (data.status) {
-              setStatus(data.status);
-              if (data.status === 'COMPLETED') {
+            if (typeof data.progress === 'number') {
+              setProgress(data.progress);
+            }
+
+            // Terminal events arrive with stage set to COMPLETED/FAILED
+            // rather than a separate "status" field
+            if (data.stage === 'COMPLETED' || data.stage === 'FAILED') {
+              setStatus(data.stage);
+              if (data.stage === 'COMPLETED') {
+                setProgress(100);
                 timeoutId = setTimeout(() => {
                   router.push(`/results/${analysisId}`);
                 }, 1500);
+              } else {
+                setError(data.data?.error || 'Analysis failed.');
               }
             }
           } catch (err) {
