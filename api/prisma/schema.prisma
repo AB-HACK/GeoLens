@@ -31,9 +31,11 @@ model Analysis {
   imageReference    String   // S3 path or local file reference
   imageBase64       String?  // Optional: cached preview
 
-  // Results from V1/V2
-  geoclipPredictions Json
-  evidence          Json
+  // Results from V1/V2 — nullable because the record is created at
+  // PENDING (upload time), before the job processor has run and
+  // populated these; they're filled in later by completeAnalysis()
+  geoclipPredictions Json?
+  evidence          Json?
   adjustedRanking   Json?
 
   // Status tracking
