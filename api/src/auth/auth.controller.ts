@@ -2,35 +2,39 @@ import {
   Controller,
   Post,
   Body,
-  Response,
+  Res,
   UseGuards,
   Get,
-  Request,
+  Req,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
-@Controller('auth')
+@Controller('api/v1/auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
   async register(
-    @Body() body: { email: string; password: string },
-    @Response({ passthrough: true }) res,
+    @Body() registerDto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const user = await this.authService.register(body.email, body.password);
+    const user = await this.authService.register(registerDto.email, registerDto.password);
     return { success: true, user };
   }
 
   @Post('login')
   async login(
-    @Body() body: { email: string; password: string },
-    @Response({ passthrough: true }) res,
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const { access_token, user } = await this.authService.login(
-      body.email,
-      body.password,
+      loginDto.email,
+      loginDto.password,
     );
 
     // Set HTTP-only cookie
@@ -46,27 +50,27 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Response({ passthrough: true }) res) {
+  async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
     return { success: true, message: 'Logged out' };
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getCurrentUser(@Request() req) {
+  async getCurrentUser(@Req() req: any) {
     return { user: req.user };
   }
 
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
   async changePassword(
-    @Request() req,
-    @Body() body: { oldPassword: string; newPassword: string },
+    @Req() req: any,
+    @Body() changePasswordDto: ChangePasswordDto,
   ) {
     return this.authService.changePassword(
       req.user.id,
-      body.oldPassword,
-      body.newPassword,
+      changePasswordDto.oldPassword,
+      changePasswordDto.newPassword,
     );
   }
 }

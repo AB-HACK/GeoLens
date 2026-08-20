@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { BullModule } from '@nestjs/bull';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { PrismaService } from './common/prisma.service';
+import { AppLogger } from './common/logger.service';
 import { AuthModule } from './auth/auth.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { UserModule } from './user/user.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -15,8 +18,14 @@ import { UserModule } from './user/user.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 10, // 10 requests per minute
+      },
+    ]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: process.env.JWT_EXPIRATION || '7d' },
       global: true,
     }),
@@ -27,10 +36,15 @@ import { UserModule } from './user/user.module';
     BullModule.registerQueue({
       name: 'analysis',
     }),
+    BullModule.registerQueue({
+      name: 'analysis-dlq', // Dead letter queue for failed jobs
+    }),
     AuthModule,
     AnalysisModule,
     UserModule,
+    HealthModule,
   ],
-  providers: [PrismaService],
+  providers: [PrismaService, AppLogger],
+  controllers: [],
 })
 export class AppModule {}
