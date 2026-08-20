@@ -1,31 +1,47 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { PrismaService } from '../common/prisma.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PrismaService } from '../common/prisma.service';
 
 @Injectable()
 export class AnalysisService {
-  private uploadsDir = './uploads';
+  private uploadsDir: string;
+  private userJobCounts = new Map<string, number>();
+  private readonly MAX_CONCURRENT_JOBS_PER_USER = 3;
 
   constructor(
     private prisma: PrismaService,
     @InjectQueue('analysis') private analysisQueue: Queue,
   ) {
-    this.ensureUploadsDir();
+    this.uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    this.ensureUploadsDirectory();
   }
 
-  private ensureUploadsDir() {
+  private ensureUploadsDirectory() {
     if (!fs.existsSync(this.uploadsDir)) {
       fs.mkdirSync(this.uploadsDir, { recursive: true });
     }
   }
 
   async submitAnalysis(userId: string, imageBuffer: Buffer, imageFilename: string) {
-    // Save image to disk
+    // Check user's current job count
+    const currentJobCount = this.userJobCounts.get(userId) || 0;
+    if (currentJobCount >= this.MAX_CONCURRENT_JOBS_PER_USER) {
+      throw new BadRequestException(
+        `Maximum concurrent jobs (${this.MAX_CONCURRENT_JOBS_PER_USER}) reached. Please wait for current jobs to complete.`,
+      );
+    }
+
+    // Ensure uploads directory exists
+    this.ensureUploadsDirectory();
+
+    // Generate unique filename
     const filename = `${Date.now()}-${imageFilename}`;
     const filepath = path.join(this.uploadsDir, filename);
+
+    // Save file to disk
     fs.writeFileSync(filepath, imageBuffer);
 
     // Create analysis record
@@ -37,7 +53,8 @@ export class AnalysisService {
       },
     });
 
-    // Queue the job
+    // Queue the job with priority based on user's current load
+    const priority = this.calculateJobPriority(userId);
     const job = await this.analysisQueue.add(
       {
         analysisId: analysis.id,
@@ -46,6 +63,7 @@ export class AnalysisService {
         imagePath: filepath,
       },
       {
+        priority,
         attempts: 3,
         backoff: {
           type: 'exponential',
@@ -53,6 +71,9 @@ export class AnalysisService {
         },
       },
     );
+
+    // Increment user's job count
+    this.userJobCounts.set(userId, currentJobCount + 1);
 
     // Store job ID
     await this.prisma.analysis.update({
@@ -65,6 +86,20 @@ export class AnalysisService {
       jobId: job.id.toString(),
       status: 'QUEUED',
     };
+  }
+
+  private calculateJobPriority(userId: string): number {
+    // Higher priority (lower number) for users with fewer active jobs
+    const currentJobCount = this.userJobCounts.get(userId) || 0;
+    // Priority range: 1 (highest) to 10 (lowest)
+    return Math.min(currentJobCount + 1, 10);
+  }
+
+  async decrementUserJobCount(userId: string) {
+    const currentCount = this.userJobCounts.get(userId) || 0;
+    if (currentCount > 0) {
+      this.userJobCounts.set(userId, currentCount - 1);
+    }
   }
 
   async getAnalysisStatus(analysisId: string, userId: string) {

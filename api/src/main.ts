@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -25,6 +26,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Global exception filter for standardized error responses
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

@@ -18,7 +18,9 @@ model User {
   updatedAt DateTime   @updatedAt
 
   analyses  Analysis[]
+  refreshTokens RefreshToken[]
 
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -49,15 +51,21 @@ model Analysis {
 
   @@index([userId])
   @@index([jobId])
+  @@index([status])
+  @@index([userId, status])
+  @@index([createdAt])
   @@map("analyses")
 }
 
 model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  @@index([userId])
+  @@index([expiresAt])
   @@map("refresh_tokens")
 }

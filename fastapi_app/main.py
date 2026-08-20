@@ -9,11 +9,12 @@ from geoclip import GeoCLIP
 
 BASE_DIR = Path(__file__).resolve().parent
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 app = FastAPI(title="GeoLens ML Service", version="3.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],

@@ -9,14 +9,16 @@ import {
   UploadedFile,
   Res,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { AnalysisService } from './analysis.service';
 import { AnalysisProgressService } from './analysis-progress.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { validateImageFile } from '../common/file-validation.util';
 
-@Controller('analysis')
+@Controller('api/v1/analysis')
 export class AnalysisController {
   constructor(
     private analysisService: AnalysisService,
@@ -28,10 +30,16 @@ export class AnalysisController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Request() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
   ) {
     if (!file) {
       return { success: false, message: 'No file provided' };
+    }
+
+    // Validate file using magic bytes
+    const validation = validateImageFile(file.buffer, file.mimetype);
+    if (!validation.isValid) {
+      throw new BadRequestException(validation.error || 'Invalid file type');
     }
 
     const result = await this.analysisService.submitAnalysis(
