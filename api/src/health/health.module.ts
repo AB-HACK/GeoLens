@@ -4,7 +4,11 @@ import { HealthController } from './health.controller';
 import { PrismaService } from '../common/prisma.service';
 
 @Module({
-  imports: [BullModule],
+  imports: [
+    BullModule.registerQueue({
+      name: 'analysis',
+    }),
+  ],
   controllers: [HealthController],
   providers: [PrismaService],
 })
