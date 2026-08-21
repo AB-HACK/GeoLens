@@ -138,7 +138,8 @@ export class AnalysisProcessor {
       const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
       const form = new FormData();
-      form.append('file', new Blob([imageBuffer], { type: 'image/jpeg' }), 'image.jpg');
+      const blob = new Blob([imageBuffer as any], { type: 'image/jpeg' });
+      form.append('file', blob, 'image.jpg');
 
       const response = await axios.post(
         `${ML_SERVICE_URL}/predict`,

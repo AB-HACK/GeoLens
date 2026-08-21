@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import LocationMap from '../../components/LocationMap'
+import GlobeMap from '../../components/GlobeMap'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -237,9 +237,10 @@ export default function ResultsPage() {
                 </div>
               </div>
               <div style={{ marginTop: '2rem', height: '460px' }}>
-                <LocationMap
+                <GlobeMap
                   locations={allLocations}
                   center={[result.top_prediction.latitude, result.top_prediction.longitude]}
+                  isProcessing={false}
                 />
               </div>
             </div>

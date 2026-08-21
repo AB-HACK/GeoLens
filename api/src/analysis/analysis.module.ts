@@ -11,6 +11,9 @@ import { PrismaService } from '../common/prisma.service';
     BullModule.registerQueue({
       name: 'analysis',
     }),
+    BullModule.registerQueue({
+      name: 'analysis-dlq',
+    }),
   ],
   providers: [
     AnalysisService,
