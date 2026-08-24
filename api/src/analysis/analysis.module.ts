@@ -5,6 +5,8 @@ import { AnalysisController } from './analysis.controller';
 import { AnalysisProcessor } from './analysis.processor';
 import { AnalysisProgressService } from './analysis-progress.service';
 import { PrismaService } from '../common/prisma.service';
+import { NominatimProvider } from '../common/nominatim-provider.service';
+import { WebcamProvider } from '../common/webcam-provider.service';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { PrismaService } from '../common/prisma.service';
     AnalysisProcessor,
     AnalysisProgressService,
     PrismaService,
+    NominatimProvider,
+    WebcamProvider,
   ],
   controllers: [AnalysisController],
   exports: [AnalysisService],

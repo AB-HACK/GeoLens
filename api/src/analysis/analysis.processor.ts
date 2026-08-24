@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import axios from 'axios';
 import { AnalysisService } from './analysis.service';
 import { AnalysisProgressService } from './analysis-progress.service';
+import { GeocodingProvider } from '../common/geocoding-provider.interface';
+import { WebcamProvider } from '../common/webcam-provider.service';
 
 // Simple in-memory cache with TTL
 class SimpleCache {
@@ -44,11 +46,14 @@ class SimpleCache {
 export class AnalysisProcessor {
   private geocodeCache = new SimpleCache();
   private weatherCache = new SimpleCache();
+  private webcamCache = new SimpleCache();
 
   constructor(
     private analysisService: AnalysisService,
     private progressService: AnalysisProgressService,
     @InjectQueue('analysis-dlq') private dlq: Queue,
+    private geocodingProvider: GeocodingProvider,
+    private webcamProvider: WebcamProvider,
   ) {}
 
   @Process()
@@ -170,10 +175,10 @@ export class AnalysisProcessor {
   }
 
   /**
-   * Adds a human-readable place name (reverse geocoding) and current
-   * weather to the top prediction. Both calls are independent and each
-   * fails gracefully — a weather-provider outage should degrade the
-   * result, not break the whole analysis.
+   * Adds a human-readable place name (reverse geocoding), current
+   * weather, and nearby webcams to the top prediction. All calls are
+   * independent and each fails gracefully — a provider outage should
+   * degrade the result, not break the whole analysis.
    */
   /**
    * Field names here (label, temperature/feels_like/humidity/description)
@@ -186,15 +191,17 @@ export class AnalysisProcessor {
     if (!topPrediction) return topPrediction;
     const { latitude, longitude } = topPrediction;
 
-    const [placeName, weather] = await Promise.all([
+    const [placeName, weather, webcams] = await Promise.all([
       this.reverseGeocode(latitude, longitude),
       this.getCurrentWeather(latitude, longitude),
+      this.getNearbyWebcams(latitude, longitude),
     ]);
 
     return {
       ...topPrediction,
       label: placeName || this.coordinateLabel(latitude, longitude),
       current_weather: weather, // null if the lookup failed — UI already handles this
+      nearby_webcams: webcams, // array of nearby webcams or empty array
     };
   }
 
@@ -225,25 +232,17 @@ export class AnalysisProcessor {
     }
 
     try {
-      const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
-        params: { lat, lon, format: 'json' },
-        headers: { 'User-Agent': 'GeoLens/3.0 (portfolio project)' },
-        timeout: 5000,
-      });
-      const address = response.data?.address;
-      if (!address) return null;
-      const city = address.city || address.town || address.village || address.county;
-      const country = address.country;
-      const result = [city, country].filter(Boolean).join(', ') || null;
+      const result = await this.geocodingProvider.reverseGeocode(lat, lon);
+      const formattedResult = result?.fullAddress || null;
       
       // Cache the result for 1 hour
-      if (result) {
-        this.geocodeCache.set(cacheKey, result, 3600000);
+      if (formattedResult) {
+        this.geocodeCache.set(cacheKey, formattedResult, 3600000);
       }
       
-      return result;
+      return formattedResult;
     } catch (error) {
-      console.error('Reverse geocoding failed:', error.message);
+      console.error('Reverse geocoding failed:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   }
@@ -280,8 +279,28 @@ export class AnalysisProcessor {
       
       return result;
     } catch (error) {
-      console.error('Weather lookup failed:', error.message);
+      console.error('Weather lookup failed:', error instanceof Error ? error.message : 'Unknown error');
       return null;
+    }
+  }
+
+  private async getNearbyWebcams(lat: number, lon: number) {
+    const cacheKey = `webcams:${lat.toFixed(4)}:${lon.toFixed(4)}`;
+    const cached = this.webcamCache.get(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    try {
+      const webcams = await this.webcamProvider.findNearbyWebcams(lat, lon);
+      
+      // Cache the result for 10 minutes (webcam preview URLs may expire)
+      this.webcamCache.set(cacheKey, webcams, 600000);
+      
+      return webcams;
+    } catch (error) {
+      console.error('Webcam lookup failed:', error instanceof Error ? error.message : 'Unknown error');
+      return [];
     }
   }
 
