@@ -122,10 +122,10 @@ export class AnalysisProcessor {
     } catch (error) {
       await this.analysisService.failAnalysis(
         analysisId,
-        error.message || 'Analysis failed',
+        error instanceof Error ? error.message : 'Analysis failed',
       );
       this.progressService.complete(analysisId, 'FAILED', {
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     } finally {
@@ -166,10 +166,10 @@ export class AnalysisProcessor {
         },
       };
     } catch (error) {
-      console.error('GeoCLIP error:', error.message);
+      console.error('GeoCLIP error:', error instanceof Error ? error.message : 'Unknown error');
       return {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -381,7 +381,7 @@ export class AnalysisProcessor {
             }
           }
         } catch (visionError) {
-          console.error('Google Vision API error:', visionError.message);
+          console.error('Google Vision API error:', visionError instanceof Error ? visionError.message : 'Unknown error');
           // Continue with empty results if Vision API fails
         }
       }
@@ -410,7 +410,7 @@ export class AnalysisProcessor {
             },
           }));
         } catch (roboflowError) {
-          console.error('Roboflow API error:', roboflowError.message);
+          console.error('Roboflow API error:', roboflowError instanceof Error ? roboflowError.message : 'Unknown error');
           // Continue with empty results if Roboflow fails
         }
       }
@@ -423,7 +423,7 @@ export class AnalysisProcessor {
         extracted_language: extractedLanguage,
       };
     } catch (error) {
-      console.error('Evidence extraction failed:', error.message);
+      console.error('Evidence extraction failed:', error instanceof Error ? error.message : 'Unknown error');
       // Return empty evidence on failure to not break the analysis pipeline
       return {
         landmarks: [],
@@ -558,7 +558,7 @@ export class AnalysisProcessor {
         },
       });
     } catch (dlqError) {
-      console.error('Failed to add job to DLQ:', dlqError.message);
+      console.error('Failed to add job to DLQ:', dlqError instanceof Error ? dlqError.message : 'Unknown error');
     }
   }
 
