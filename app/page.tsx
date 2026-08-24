@@ -7,7 +7,8 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600">GeoLens</h1>
           <div className="flex gap-4">
-            <Link
+            {/* Auth temporarily disabled */}
+            {/* <Link
               href="/auth/login"
               className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -18,6 +19,12 @@ export default function HomePage() {
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
             >
               Sign Up
+            </Link> */}
+            <Link
+              href="/upload"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            >
+              Get Started
             </Link>
           </div>
         </div>

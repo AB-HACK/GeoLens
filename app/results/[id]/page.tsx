@@ -24,6 +24,22 @@ type WeatherInfo = {
   humidity: number
 }
 
+type Webcam = {
+  id: string
+  title: string
+  location: {
+    lat: number
+    lng: number
+  }
+  image: {
+    current: {
+      preview: string
+      daylight: string
+    }
+  }
+  distance: number
+}
+
 type Evidence = {
   landmarks: { name: string; confidence: number }[]
   labels: { name: string; confidence: number }[]
@@ -34,10 +50,10 @@ type Evidence = {
 
 type ApiResult = {
   analysisId: string
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'COMPLETED_WITH_WARNINGS' | 'FAILED'
   imageReference: string | null
   geoclipPredictions: {
-    top_prediction: PredictionLocation & { current_weather?: WeatherInfo | null }
+    top_prediction: PredictionLocation & { current_weather?: WeatherInfo | null; nearby_webcams?: Webcam[] }
     alternatives: PredictionLocation[]
     meta?: { model: string; version: string }
   } | null
@@ -257,8 +273,58 @@ export default function ResultsPage() {
                   <p className="text-muted">Weather data is unavailable at the moment.</p>
                 )}
               </div>
+
+              {/* Nearby Webcams */}
+              {result.top_prediction.nearby_webcams && result.top_prediction.nearby_webcams.length > 0 && (
+                <div className="weather-card">
+                  <p className="text-muted">Nearby public webcams</p>
+                  <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '-0.5rem', marginBottom: '0.8rem' }}>
+                    Contextual view of the area (not verification of photo origin)
+                  </p>
+                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    {result.top_prediction.nearby_webcams.map((webcam) => (
+                      <div
+                        key={webcam.id}
+                        style={{
+                          border: '1px solid rgba(148, 163, 184, 0.2)',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <img
+                          src={webcam.image.current.preview}
+                          alt={webcam.title}
+                          style={{
+                            width: '100%',
+                            height: '120px',
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.src = webcam.image.current.daylight
+                          }}
+                        />
+                        <div style={{ padding: '0.75rem' }}>
+                          <p style={{ margin: 0, fontWeight: 500, fontSize: '0.9rem' }}>{webcam.title}</p>
+                          <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>
+                            {webcam.distance.toFixed(1)} km away
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button className="secondary-button" onClick={() => router.push('/upload')}>
                 Upload another photo
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => router.push(`/explorer/${analysisId}`)}
+                style={{ marginTop: '0.5rem' }}
+              >
+                Explore All Candidates
               </button>
             </div>
           </div>

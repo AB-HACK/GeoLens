@@ -10,6 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enable PostGIS extension
+// Run: CREATE EXTENSION IF NOT EXISTS postgis;
+
 model User {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -41,7 +44,7 @@ model Analysis {
   adjustedRanking   Json?
 
   // Status tracking
-  status            String   @default("COMPLETED")  // PENDING, PROCESSING, COMPLETED, FAILED
+  status            String   @default("COMPLETED")  // PENDING, PROCESSING, COMPLETED, COMPLETED_WITH_WARNINGS, FAILED
   error             String?
   jobId             String?  @unique               // Reference to Redis job
 
